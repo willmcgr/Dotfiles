@@ -1,0 +1,6 @@
+##  block all
+*
+.*
+##  whitelist items
+!.gitignore
+
