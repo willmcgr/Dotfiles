@@ -838,9 +838,9 @@ zle -N dbt
 function prtg(){
     zstyle -g mode ":pr_willmcgr:" mode
     case "${mode}" in
-        ('full')      zstyle ':pr_nethack:' mode compct ;;
-        ('compact')   zstyle ':pr_nethack:' mode bare   ;;
-        ('bare')      zstyle ':pr_nethack:' mode full   ;;
+        ('full')      zstyle ':pr_willmcgr:' mode compct ;;
+        ('compact')   zstyle ':pr_willmcgr:' mode bare   ;;
+        ('bare')      zstyle ':pr_willmcgr:' mode full   ;;
     esac
 }
 zle -N prtg
@@ -1527,26 +1527,32 @@ if [[ -z ${ZSHRUN} ]];then
 #        builtin source ${ZDOTDIR:-${HOME}/.zsh}/zautsg/zsh-autosuggestions.zsh
 #    fi
 
+    ##  >>  scratchpad terminal
+    if [[ -n ${SCRATCH_PAD_TERMINAL} ]]
+    then
+        zstyle ':pr_willmcgr:' mode bare
+    fi
+
     ##  >>  connect to tmux:main if available
     (( EUID != 0 )) && [[ -z ${TMUX} ]] && [[ -z ${SCRATCH_PAD_TERMINAL} ]] &&
         if command tmux has -t main &>/dev/null
+        then
+            if (( ${$(command tmux ls | grep -E "^\<main\>:.*\(\<attached\>\)$" | wc -l)//[[:space:]]/} == 0 ))
             then
-                if (( ${$(command tmux ls | grep -E "^\<main\>:.*\(\<attached\>\)$" | wc -l)//[[:space:]]/} == 0 ))
-                then
-                    command tmux attach -t main
-#                elif command tmux has -t base &>/dev/null
+                command tmux attach -t main
+#            elif command tmux has -t base &>/dev/null
+#            then
+#                if (( ${$(command tmux ls | grep -E "^\<base\>:.*\(\<attached\>\)$" | wc -l)//[[:space:]]/} == 0 ))
 #                then
-#                    if (( ${$(command tmux ls | grep -E "^\<base\>:.*\(\<attached\>\)$" | wc -l)//[[:space:]]/} == 0 ))
-#                    then
-#                        command tmux attach -t base
-#                    fi
-#                else
-#                    command tmux new-session -s base
-                fi
-            else
-                command tmux new-session -s main
-            fi ||
-            return 0
+#                    command tmux attach -t base
+#                fi
+#            else
+#                command tmux new-session -s base
+            fi
+        else
+            command tmux new-session -s main
+        fi ||
+        return 0
 
 fi
 

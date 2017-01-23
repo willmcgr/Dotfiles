@@ -1,0 +1,362 @@
+##***************************************
+##    File: $dots/cfg/.zsh/.zsh_prompt_willmcgr
+##  Author: willmcgr
+##     vim:ft=zsh:
+##***************************************
+##  based of prompt by seth house
+
+##  Define variables/arrays
+  ##Add files to fpath
+#fpath=( ~/.zsh_functions $fpath )
+#[[ -d $HOME/.zsh_functions/VCS_Info ]] &&
+#    fpath[1]=( ${fpath[1]} ~/.zsh_functions/**/*~*/(CVS)#(/) )
+  ##load plugins
+autoload -U colors && colors
+autoload -U promptinit
+autoload -Uz vcs_info
+  ##define colors
+local off bbg blk red grn ylw blu mag cyn wht bblk bred bgrn bylw bblu bmag bcyn bwht
+off=$'%{\e[0m%}'
+bbg=$'%{\e[40m%}'
+blk=$'%{\e[1;30m%}'
+red=$'%{\e[1;31m%}'
+grn=$'%{\e[1;32m%}'
+ylw=$'%{\e[1;33m%}'
+blu=$'%{\e[1;34m%}'
+mag=$'%{\e[1;35m%}'
+cyn=$'%{\e[1;36m%}'
+wht=$'%{\e[1;37m%}'
+dblk=$'%{\e[0;30m%}'
+dred=$'%{\e[0;31m%}'
+dgrn=$'%{\e[0;32m%}'
+dylw=$'%{\e[0;33m%}'
+dblu=$'%{\e[0;34m%}'
+dmag=$'%{\e[0;35m%}'
+dcyn=$'%{\e[0;36m%}'
+dwht=$'%{\e[0;37m%}'
+  ##initialize arrays
+local -A pr_com
+local -a pr_llines pr_rlines
+  ##turn on debugging options
+#zstyle ':vcs_info:*+*:*' debug true
+#zstyle ':pr_willmcgr:*' debug true
+  ##make aliases to switch modes
+alias pr_full="zstyle ':pr_willmcgr:' mode full"
+alias pr_compact="zstyle ':pr_willmcgr:' mode compact"
+alias pr_bare="zstyle ':pr_willmcgr:' mode bare"
+
+
+##  Default Mode
+  ##Modes: full, compact, bare, run
+if [[ $LINES -lt 5 || $COLUMNS -lt 100 ]] ; then
+    zstyle ":pr_willmcgr:" mode bare
+else
+    zstyle ":pr_willmcgr:" mode full
+fi
+
+
+##  Prompt definitions
+  ##Define prompt elements
+zstyle ':pr_willmcgr:*' hooks pwd usr vcs venv jobs prompt
+zstyle ':pr_willmcgr:*' pet "d" # A domestic animal, the _tame dog_ (_Canis familiaris_)
+zstyle ':pr_willmcgr:*' pwd "%~"
+zstyle ':pr_willmcgr:*' usr "%n"
+zstyle ':pr_willmcgr:*' host "%m"
+  ##Define vcs_info
+zstyle ':vcs_info:*'            enable            git hg bzr svn
+zstyle ':vcs_info:(hg*|git*):*' get-revision      true
+zstyle ':vcs_info:(hg*|git*):*' check-for-changes true
+  ##Define formats
+zstyle ':vcs_info:(hg*|git*)'   formats           "${blk}(${dylw}%s${blk}) ${dgrn}%12.12i${blk} %c%u %b%m"
+zstyle ':vcs_info:(hg*|git*)'   actionformats     "(%s|${wht}%a${blk}) %12.12i %c%u %b%m"
+zstyle ':vcs_info:hg*:*'        branchformat      "${grn}%b${off}"
+zstyle ':vcs_info:(hg*|git*):*' stagedstr         "${grn}S${blk}"
+zstyle ':vcs_info:(hg*|git*):*' unstagedstr       "${red}U${blk}"
+
+
+##***************************************
+##  Prompt Modes
+##***************************************
+
+##  Show the full two/three-line willmcgr prompt
+  ## zstyle ':pr_willmcgr:' mode full
+  ## ... [dotfiles]:~/src/dotfiles ........... will@Centurion
+  ## ... (git) d2a3f82fe9c5 US? master -- origin/master +1/-2
+  ## ..d 3 >>
+function +pr-mode-full() {
+  ##Define variables/arrays
+    local -a lines pline infoline debug pet
+    local i i_width i_pad filler dungeon
+    zstyle ':vcs_info:git*+set-message:*' hooks git-st git-up git-stash git-untracked
+    zstyle -g pet ":pr_willmcgr:*" pet
+    zstyle -t ":pr_willmcgr:*" debug && debug=1 || debug=0
+  ##Define infoline
+    infoline=( ${pr_com[pwd]} ${pr_com[usr]} )
+    [[ -n ${pr_com[venv]} ]] && infoline[1]=(
+        ${infoline[1]}
+        "v(${pr_com[venv]})" )
+  ##Full-width filler; search/replace color wraps to find real text width
+    i_width=${(S)infoline//\%\{*\%\}}   ##search-and-replace color escapes
+    i_width=${#${(%)i_width}}           ##expand all escapes and count the chars
+    i_pad=5                             ##the dungeon floor + one space
+  ##Add spacing to infoline
+    filler="${blk}${(l:$(( $COLUMNS - $i_width - $i_pad ))::.:)}${off}"
+    infoline[-1]=( ${filler} ${infoline[-1]} )
+  ##Add jobs to promptline
+    [[ -n ${pr_com[jobs]} ]] && pline+=( ${pr_com[jobs]} )
+    pline+=( ${pr_com[prompt]} )
+  ##Assemble all prompt lines
+    lines=(
+        "${(j: :)infoline}"
+        "${(j: :)pline}" )
+    [[ -n ${pr_com[vcs]} ]] && lines[1]=(
+        "${lines[1]}"
+        "${blk}${pr_com[vcs]}${off}" )
+  ##Add dungeon floor to each line
+    dungeon=${(l:$(( ${#lines} * 3 ))::.:)}
+    dungeon[$[${RANDOM}%${#dungeon}]+1]=$pet
+    for (( i=1; i < $(( ${#lines} + 1 )); i++ )) ; do
+        case $i in
+            1) x=1;; 2) x=4;; 3) x=7;; 4) x=10;;
+        esac
+        lines[$i]="${blk}${dungeon[x,$(( $x + 2 ))]} ${lines[$i]}${off}"
+    done
+    pr_llines=( ${lines[@]} )
+}
+
+
+##  Show the single-line prompt:
+  ## zstyle ':pr_willmcgr:' mode compact
+  ## ~/src/dotfiles >>                       d2a3f82f US? master +1/-2
+function +pr-mode-compact() {
+  ##Define variables/arrays
+    zstyle ':pr_willmcgr:*' pwd "%1~" # only last segment of cwd
+    zstyle ':vcs_info:git*+set-message:*' hooks git-st git-st-compact git-untracked
+  ##Define left prompt
+    pr_llines=( "${pr_com[pwd]} ${pr_com[jobs]} ${pr_com[prompt]}" )
+  ##Define right prompt
+    [[ -n ${pr_com[vcs]} ]] && pr_rlines=( ${pr_com[vcs]} )
+}
+
+
+##  Show just the prompt
+  ## zstyle ':pr_willmcgr:' mode bare
+  ## >>
+function +pr-mode-bare() {
+  ##Define left prompt
+    pr_llines=( "${pr_com[jobs]} ${pr_com[prompt]}" )
+}
+
+
+##  Show the run dialog prompt
+  ## zstyle ':pr_willmcgr:' mode run
+  ## zshrun >>
+function +pr-mode-run() {
+  ##Define left prompt
+    pr_llines=( "${mag}zshrun${off}} ${pr_com[prompt]}" )
+}
+
+
+##***************************************
+##  Prompt functions
+##***************************************
+
+##  Show the cwd in green if writable, yellow otherwise
+function +pr-pwd() {
+  ##Define variables/arrays
+    local -a v_pwd i_pwd
+    zstyle -g i_pwd ":pr_willmcgr:*" pwd
+  ##Formatting output
+    [[ -w $PWD ]] && v_pwd+=( ${dcyn} ) || v_pwd+=( ${ylw} )
+    v_pwd+=( ${i_pwd} )
+    v_pwd+=( ${off} )
+    pr_com[pwd]=${(j::)v_pwd}
+}
+
+##  Show the current user, also show the host if SSH'ed in from somewhere
+function +pr-usr() {
+  ##Define variables/arrays
+    local -a v_usr i_usr i_host
+    zstyle -g i_usr ":pr_willmcgr:*" usr
+    zstyle -g i_host ":pr_willmcgr:*" host
+  ##Formatting output
+    v_usr=( ${blu}${i_usr}${off} )
+    [[ -n $SSH_CLIENT ]] &&
+        v_usr+=( "${blk}@${red}${i_host}${off}" ) ||
+        v_usr+=( "${blk}@${dcyn}${i_host}${off}" )
+    pr_com[usr]=${(j::)v_usr}
+}
+
+##  Show info collected from vcs_info
+function +pr-vcs() {
+  ##Define variables/arrays
+    local -a v_vcs
+  ##Formatting output
+    [[ -n ${vcs_info_msg_0_} ]] && v_vcs=(
+        ${blk}
+        ${vcs_info_msg_0_}
+        ${off} )
+    pr_com[vcs]=${(j::)v_vcs}
+}
+
+##  Show virtualenv information
+  # TODO: possible to visually overlay this info with pwd if they overlap?
+function +pr-venv() {
+  ##Define variables/arrays
+    local -a v_venv
+  ##Formatting output
+    [[ -n ${VIRTUAL_ENV} ]] && v_venv=(
+        ${blk}
+        $(basename ${VIRTUAL_ENV})
+        ${off} )
+    pr_com[venv]=${(j::)v_venv}
+}
+
+# Show number of background jobs, or hide if none
+function +pr-jobs() {
+  ##Define variables/arrays
+    local v_jobs="%j"
+    local n_jobs=${(%)v_jobs}
+  ##Formatting output
+    [[ n_jobs -gt 0 ]] && pr_com[jobs]="${bylw}${n_jobs}${off}"
+    return 0
+}
+
+##  Show the shell prompt, red if the last exit code was non-zero
+function +pr-prompt() {
+  ##Define variables/arrays
+    local -a v_prompt
+  ##Formatting output
+    v_prompt=(
+        "%(0?.${blu}.${red})"
+        ">>"
+        ${reset} )
+    pr_com[prompt]=${(j::)v_prompt}
+}
+
+
+##***************************************
+##  vcs_info functions
+##***************************************
+
+##  Show remote ref name and number of commits ahead-of or behind
+function +vi-git-st() {
+  ##Define variables/arrays
+    local ahead behind remote
+    local -a gitstatus
+  ##Are we on a remote-tracking branch?
+    remote=${$(git rev-parse --verify ${hook_com[branch]}@{upstream} \
+        --symbolic-full-name --abbrev-ref 2>/dev/null)}
+  ##Add to gitstatus
+    if [[ -n ${remote} ]] ; then
+        ahead=$(git rev-list ${hook_com[branch]}@{upstream}..HEAD 2>/dev/null | wc -l)
+        (( $ahead )) && gitstatus+=( "${grn}+${ahead}${blk}" )
+        behind=$(git rev-list HEAD..${hook_com[branch]}@{upstream} 2>/dev/null | wc -l)
+        (( $behind )) && gitstatus+=( "${red}-${behind}${blk}" )
+        user_data[gitstatus]=${gitstatus}
+    fi
+}
+
+##  Show the upstream-tracking branch after the local branch.
+function +vi-git-up() {
+  ##Define variables/arrays
+    local remote
+  ##Are we on a remote-tracking branch?
+    remote=${$(git rev-parse --verify ${hook_com[branch]}@{upstream} \
+        --symbolic-full-name --abbrev-ref 2>/dev/null)}
+  ##Define git branch
+    if [[ -n ${remote} ]] ; then
+        hook_com[branch]="${dblu}${hook_com[branch]}${off} ${dwht}${remote/\/*/}${blk}/${dblu}${remote/*\//}${off} ${(j:/:)gitstatus}"
+    fi
+}
+
+##  Show the above/behind upstream counts more tersely for the compact display
+function +vi-git-st-compact() {
+    [[ -n ${user_data[gitstatus]} ]] \
+        && hook_com[misc]="${(j:/:)user_data[gitstatus]}"
+}
+
+# Show count of stashed changes
+function +vi-git-stash() {
+  ##Define variables/arrays
+    local -a stashes
+  ##Add to gitstatus
+    if [[ -s $(git rev-parse --git-dir)/refs/stash ]] ; then
+        stashes=$(git stash list 2>/dev/null | wc -l)
+        hook_com[misc]+=" (${stashes} stashed)"
+    fi
+}
+
+# Indicate if there are any untracked files present
+function +vi-git-untracked() {
+  ##Define variables/arrays
+    local untracked
+  ##check if there's at least 1 untracked file
+    untracked=${$(git ls-files --exclude-standard --others | head -n 1)}
+  ##Add to git status
+    if [[ -n ${untracked} ]] ; then
+        hook_com[unstaged]="${hook_com[unstaged]}${ylw}?${blk}"
+    fi
+}
+
+
+##***************************************
+##  run the prompt functions
+##***************************************
+
+##  Runs all the prompt hook functions
+function pr_run_hooks() {
+  ##Define variables/arrays
+    local debug hook func
+    local -a hooks
+    zstyle -g hooks ":pr_willmcgr:*" hooks
+    zstyle -t ":pr_willmcgr:*" debug && debug=1 || debug=0
+  ##Exit if no hooks defined
+    (( ${#hooks} == 0 )) && return 0
+  ##Run the hook
+    for hook in ${hooks} ; do
+        func="+pr-${hook}"
+        if (( ${+functions[$func]} == 0 )); then
+            (( debug )) && printf '  + Unknown function: "%s"\n' "${func}"
+            continue
+        fi
+        (( debug )) && printf '  + Running function: "%s"\n' "${func}"
+        true
+        ${func} "$@"
+        case $? in
+            (0)       ;;
+            (*) break ;;
+        esac
+    done
+}
+
+##  Updates prompt data
+  ##To be added to the precmd_* array so it is executed before each prompt
+function precmd_prompt {
+  ##Define variables/arrays
+    local func debug
+    local -a mode
+  ##Clear out old values
+    pr_com=()
+    pr_llines=()
+    pr_rlines=()
+  ##Grab current values
+    zstyle -g mode ":pr_willmcgr:" mode
+    zstyle -t ":pr_willmcgr:*" debug && debug=1 || debug=0
+  ##Collect needed data
+    vcs_info
+    pr_run_hooks
+  ##Use the above data and build the prompt arrays
+    func="+pr-mode-${mode}"
+    if (( ${+functions[$func]} == 0 )); then
+        (( debug )) && printf '  + Unknown function: "%s"\n' "${func}"
+        func="+pr-mode-full"
+    fi
+    (( debug )) && printf '  + Running function: "%s"\n' "${func}"
+    ${func} "$@"
+  ##Set the prompts
+    PROMPT="${(F)pr_llines} "
+    RPROMPT="${(F)pr_rlines}"
+}
+
+
